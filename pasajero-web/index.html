@@ -1,0 +1,169 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Consulta de Pasajes - Terminal de Sucre</title>
+</head>
+<body>
+
+    <h1>Terminal de Buses de Sucre</h1>
+    <h2>Consulta de Salidas</h2>
+
+    <label>Destino:</label>
+    <input type="text" id="destino" placeholder="Ej. La Paz">
+
+    <label>Fecha:</label>
+    <input type="date" id="fecha">
+
+    <button onclick="buscarSalidas()">Buscar</button>
+    <button onclick="listarTodas()">Ver todas</button>
+
+    <hr>
+
+    <h2>Salidas disponibles</h2>
+    <p id="mensaje"></p>
+    <div id="resultados"></div>
+
+    <hr>
+
+    <div id="detalle">
+        <h2>Detalle de asientos</h2>
+        <div id="asientos"></div>
+    </div>
+
+    <script>
+        const API = "http://127.0.0.1:8000/api";
+
+        async function obtenerDatos(url) {
+            const respuesta = await fetch(url, {
+                headers: {
+                    "Accept": "application/json"
+                }
+            });
+
+            const datos = await respuesta.json();
+
+            if (!respuesta.ok) {
+                throw new Error(
+                    datos.mensaje ||
+                    datos.message ||
+                    `Error HTTP ${respuesta.status}`
+                );
+            }
+
+            return datos;
+        }
+
+        async function buscarSalidas() {
+            const destino = document.getElementById("destino").value;
+            const fecha = document.getElementById("fecha").value;
+
+            const parametros = new URLSearchParams();
+
+            if (destino) parametros.append("destino", destino);
+            if (fecha) parametros.append("fecha", fecha);
+
+            document.getElementById("mensaje").textContent = "";
+            document.getElementById("resultados").innerHTML = "";
+            document.getElementById("asientos").innerHTML = "";
+
+            try {
+                const salidas = await obtenerDatos(
+                    `${API}/salidas?${parametros.toString()}`
+                );
+
+                mostrarSalidas(salidas);
+
+            } catch (error) {
+                document.getElementById("mensaje").textContent =
+                    "Error: " + error.message;
+            }
+        }
+
+        async function listarTodas() {
+            document.getElementById("destino").value = "";
+            document.getElementById("fecha").value = "";
+
+            await buscarSalidas();
+        }
+
+        function mostrarSalidas(salidas) {
+            const contenedor = document.getElementById("resultados");
+
+            if (salidas.length === 0) {
+                contenedor.textContent = "No hay salidas disponibles.";
+                return;
+            }
+
+            salidas.forEach(salida => {
+                const div = document.createElement("div");
+
+                const titulo = document.createElement("h3");
+                titulo.textContent = "Destino: " + salida.destino;
+
+                const info = document.createElement("p");
+                info.textContent =
+                    `Fecha: ${salida.fecha} | Hora: ${salida.hora} | ` +
+                    `Bus: ${salida.bus} | Precio: Bs ${salida.precio} | ` +
+                    `Asientos libres: ${salida.asientos_libres}`;
+
+                const boton = document.createElement("button");
+                boton.textContent = "Ver asientos";
+                boton.addEventListener("click", () => {
+                    verAsientos(salida.id);
+                });
+
+                div.appendChild(titulo);
+                div.appendChild(info);
+                div.appendChild(boton);
+                div.appendChild(document.createElement("hr"));
+
+                contenedor.appendChild(div);
+            });
+        }
+
+        async function verAsientos(id) {
+            const contenedor = document.getElementById("asientos");
+            contenedor.innerHTML = "";
+
+            try {
+                const salida = await obtenerDatos(
+                    `${API}/salidas/${id}`
+                );
+
+                const titulo = document.createElement("h3");
+                titulo.textContent =
+                    `Bus ${salida.bus} - ${salida.destino}`;
+                contenedor.appendChild(titulo);
+
+                const ocupados = salida.asientos.map(
+                    asiento => Number(asiento.numero)
+                );
+
+                for (let i = 1; i <= salida.capacidad; i++) {
+                    const p = document.createElement("p");
+
+                    p.textContent = ocupados.includes(i)
+                        ? `Asiento ${i}: OCUPADO`
+                        : `Asiento ${i}: LIBRE`;
+
+                    contenedor.appendChild(p);
+                }
+
+                const resumen = document.createElement("h4");
+                resumen.textContent =
+                    `Asientos libres: ${salida.capacidad - ocupados.length}`;
+
+                contenedor.appendChild(resumen);
+
+            } catch (error) {
+                contenedor.textContent = "Error: " + error.message;
+            }
+        }
+
+        listarTodas();
+    </script>
+
+</body>
+</html>

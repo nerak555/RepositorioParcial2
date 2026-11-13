@@ -1,0 +1,28 @@
+# Credenciales
+.env
+.env.*
+!.env.example
+
+# Node.js
+node_modules/
+
+# Laravel
+vendor/
+storage/logs/*.log
+
+# Java
+target/
+
+# Visual Studio
+.vs/
+bin/
+obj/
+*.user
+*.suo
+
+# NetBeans
+nbproject/private/
+
+# Archivos comprimidos
+*.rar
+*.zip
